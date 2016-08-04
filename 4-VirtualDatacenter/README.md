@@ -55,6 +55,8 @@ Any troubleshooting related to the NVA should go through Barracuda at [https://w
 
 ## Deployment
 
+The template is set up to deploy a 3-tier sample web application to demonstrate the template’s functionality.  Users can deploy infrastructure only, without the sample application, via the “Deploy to Azure” button.  Instructions for deploying via the button, both with and without the sample application, are [included here](./DeployToAzure.md).
+
 ### Deploy using the Azure Portal
 [![Deploy to Azure](../images/azurebtn.png)](https://valoremconsulting.github.io/AzureCLI/redirect.html)
 
