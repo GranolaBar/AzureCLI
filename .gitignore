@@ -14,3 +14,5 @@
 # User-Specific Files
 *.suo
 /.vs/config/applicationhost.config
+/4-VirtualDatacenter/Templates/vdc-adxtier-azuredeploy.json
+/4-VirtualDatacenter/Templates/vdc-adtier-azuredeploy - Copy.json

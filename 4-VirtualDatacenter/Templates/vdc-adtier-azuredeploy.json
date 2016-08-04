@@ -77,6 +77,7 @@
 
 
 
+
 		{
 			"name": "[variables('nic1Name') ]",
 			"type": "Microsoft.Network/networkInterfaces",
@@ -89,35 +90,12 @@
 						"name": "ipconfig1",
 						"properties": {
 							"privateIPAllocationMethod": "Static",
-							"privateIPAddress":          "[parameters('virtualNetworkParameters').adFirstDCIPAddress]",
+							"privateIPAddress":          "[parameters('virtualNetworkParameters').adDC1IPAddress]",
 							"subnet": { "id": "[  concat(resourceId('Microsoft.Network/virtualNetworks',  parameters('virtualNetworkParameters').virtualNetworkName),'/subnets/',parameters('virtualNetworkParameters').adSubnetName)]" }
 						}
 					}
 				],
 				"dnsSettings": { "dnsServers": [ "[parameters('virtualNetworkParameters').AzureDNS]" ] }
-			}
-		},
-
-
-
-		{
-			"name": "[variables('nic2Name') ]",
-			"type": "Microsoft.Network/networkInterfaces",
-			"location": "[resourceGroup().location]",
-			"apiVersion": "2016-03-30",
-
-			"dependsOn": [ "Microsoft.Resources/deployments/POST-AD1" ],
-
-			"properties": {
-				"ipConfigurations": [
-					{
-						"name": "ipconfig1",
-						"properties": {
-							"privateIPAllocationMethod": "Dynamic",
-							"subnet": { "id": "[  concat(resourceId('Microsoft.Network/virtualNetworks',  parameters('virtualNetworkParameters').virtualNetworkName),'/subnets/',parameters('virtualNetworkParameters').adSubnetName)]" }
-						}
-					}
-				]
 			}
 		},
 
@@ -192,54 +170,98 @@
 		},
 
 
+		{
+			"name": "[variables('nic2Name') ]",
+			"type": "Microsoft.Network/networkInterfaces",
+			"location": "[resourceGroup().location]",
+			"apiVersion": "2016-03-30",
 
-		//{
-		//	"name": "ADvm2",
-		//	"type": "Microsoft.Resources/deployments",
-		//	"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
-
-		//	"dependsOn": [
-		//		"Microsoft.Resources/deployments/AS",
-		//		"[concat('Microsoft.Network/networkInterfaces/', variables('nic2Name'))]",
-		//		"Microsoft.Resources/deployments/ADsa2"
-		//	],
-
-		//	"properties": {
-		//		"mode": "incremental",
-		//		"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/vm-via-nic-with-availability-set.json')]" },
-
-		//		"parameters": {
-		//			"commonSettings":         { "value": "[parameters('commonSettings')           ]" },
-		//			"vmName":                 { "value": "[ variables('vm2Name')                  ]" },
-		//			"diskStorageAccountName": { "value": "[ variables('sa2Name')                  ]" },
-		//			"diagStorageAccountName": { "value": "[parameters('diagStorageAccountName')   ]" },
-		//			"nicName":                { "value": "[variables('nic2Name')                  ]" },
-		//			"availabilitySetName":    { "value": "[parameters('availabilitySetName')      ]" }
-		//		}
-		//	}
-		//}
+			"dependsOn": [ "Microsoft.Resources/deployments/POST-AD1" ],
 
 
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Static",
+							"privateIPAddress": "[parameters('virtualNetworkParameters').adDC2IPAddress]",
+							"subnet": { "id": "[  concat(resourceId('Microsoft.Network/virtualNetworks',  parameters('virtualNetworkParameters').virtualNetworkName),'/subnets/',parameters('virtualNetworkParameters').adSubnetName)]" }
+						}
+					}
+				],
+				"dnsSettings": { "dnsServers": [ "[parameters('virtualNetworkParameters').adDC1IPAddress]", "[parameters('virtualNetworkParameters').adDC2IPAddress]" ] } 
+			}
+		},
 
-		//,{
-		//	"name": "AD2",
-		//	"type": "Microsoft.Resources/deployments",
-		//	"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-		//	"dependsOn": [ "Microsoft.Resources/deployments/ADvm2", "Microsoft.Resources/deployments/AD1" ],
+		{
+			"name": "ADvm2",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-		//	"properties": {
-		//		"mode": "incremental",
-		//		"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/applyDSC',parameters('commonSettings').deploySwitch,'.json')]" },
+			"dependsOn": [
+				"Microsoft.Resources/deployments/AS",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nic2Name'))]",
+				"Microsoft.Resources/deployments/ADsa2"
+			],
 
-		//		"parameters": {
-		//			"commonSettings": { "value": "[parameters('commonSettings') ]" },
-		//			"vmName":         { "value": "[ variables('vm2Name')        ]" },
-		//			"scriptName":     { "value": "AD-Others.ps1" },
-		//			"configName":     { "value": "DemoAD2" }
-		//		}
-		//	}
-		//}
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/vm-via-nic-with-availability-set.json')]" },
+
+				"parameters": {
+					"commonSettings":         { "value": "[parameters('commonSettings')           ]" },
+					"vmName":                 { "value": "[ variables('vm2Name')                  ]" },
+					"diskStorageAccountName": { "value": "[ variables('sa2Name')                  ]" },
+					"diagStorageAccountName": { "value": "[parameters('diagStorageAccountName')   ]" },
+					"nicName":                { "value": "[ variables('nic2Name')                 ]" },
+					"availabilitySetName":    { "value": "[parameters('availabilitySetName')      ]" }
+				}
+			}
+		},
+
+
+
+		{
+			"name": "AD2",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+			"dependsOn": [ "Microsoft.Resources/deployments/ADvm2"],
+
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/applyDSC',parameters('commonSettings').deploySwitch,'.json')]" },
+
+				"parameters": {
+					"commonSettings": { "value": "[parameters('commonSettings') ]" },
+					"vmName":         { "value": "[ variables('vm2Name')        ]" },
+					"scriptName":     { "value": "AD-Others.ps1" },
+					"configName":     { "value": "DemoAD2" }
+				}
+			}
+		},
+
+
+
+		{
+			"name": "POST-AD2",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+			"dependsOn": [ "Microsoft.Resources/deployments/AD2" ],
+
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-shared-azuredeploy-PostSecondDC.json')]" },
+
+				"parameters": {
+					"commonSettings":           { "value": "[parameters('commonSettings')          ]" },
+					"virtualNetworkParameters": { "value": "[parameters('virtualNetworkParameters')]" }
+				}
+			}
+		}
 
 
 	]

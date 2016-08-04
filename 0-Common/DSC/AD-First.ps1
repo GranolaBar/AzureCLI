@@ -9,6 +9,7 @@ configuration DemoAD1
 		[Parameter(Mandatory=$true)] [ValidateNotNullorEmpty()] [PSCredential] $DomainUserAccount
     )
 		
+    Import-DscResource -ModuleName xNetworking
     Import-DscResource -ModuleName xActiveDirectory
 	
 
@@ -18,6 +19,26 @@ configuration DemoAD1
 		{
 			RebootNodeIfNeeded = $true
 			DebugMode = "ForceModuleImport"
+		}
+
+		WindowsFeature DNS 
+		{ 
+			Ensure = "Present" 
+			Name   = "DNS"
+		}
+
+		WindowsFeature DNSTools
+		{ 
+			Ensure = "Present" 
+			Name   = "RSAT-DNS-Server"
+		}
+
+		xDnsServerAddress DnsServerAddress 
+		{ 
+			Address        = '127.0.0.1' 
+			InterfaceAlias = 'Ethernet'
+			AddressFamily  = 'IPv4'
+			DependsOn      = "[WindowsFeature]DNS"
 		}
 
 		WindowsFeature ADDSInstall

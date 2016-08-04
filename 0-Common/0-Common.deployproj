@@ -146,6 +146,10 @@
     <None Include="DSC\xNetworking\Examples\Sample_xIPAddress_Parameterized.ps1" />
     <None Include="DSC\xNetworking\xNetworking.psd1" />
     <None Include="DSC\xNetworking\xNetworking_TechNetDocumentation.html" />
+    <None Include="DSC\xPendingReboot\DSCResources\MSFT_xPendingReboot\MSFT_xPendingReboot.psm1" />
+    <None Include="DSC\xPendingReboot\DSCResources\MSFT_xPendingReboot\MSFT_xPendingReboot.schema.mof" />
+    <None Include="DSC\xPendingReboot\xPendingReboot.psd1" />
+    <None Include="DSC\xPendingReboot\xPendingReboot_Documentation.html" />
     <None Include="DSC\xPSDesiredStateConfiguration\3.11.0.0\DSCPullServerSetup\PublishModulesAndMofsToPullServer.psm1" />
     <None Include="DSC\xPSDesiredStateConfiguration\3.11.0.0\DSCPullServerSetup\README.md" />
     <None Include="DSC\xPSDesiredStateConfiguration\3.11.0.0\DSCResources\CommonResourceHelper.psm1" />

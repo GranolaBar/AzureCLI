@@ -40,7 +40,7 @@
                   "stbSubnetName": "[concat(parameters('appName'), '-', parameters('appEnvironment'),  '-stb-subnet')]",                "stbSubnetRange": "10.0.3.0/24",    "stbPrivateIPAddress": "10.0.3.250",
                   "sqlSubnetName": "[concat(parameters('appName'), '-', parameters('appEnvironment'),  '-sql-subnet')]",                "sqlSubnetRange": "10.0.8.0/24",    "sqlPrivateIPAddress": "10.0.8.250",
                  "mgmtSubnetName": "[concat(parameters('appName'), '-', parameters('appEnvironment'), '-mgmt-subnet')]",               "mgmtSubnetRange": "10.0.6.0/24",
-                   "adSubnetName": "[concat(parameters('appName'), '-', parameters('appEnvironment'),   '-ad-subnet')]",                 "adSubnetRange": "10.0.9.0/24",	 "adFirstDCIPAddress": "10.0.9.250",
+                   "adSubnetName": "[concat(parameters('appName'), '-', parameters('appEnvironment'),   '-ad-subnet')]",                 "adSubnetRange": "10.0.9.0/24",	     "adDC1IPAddress": "10.0.9.250",     "adDC2IPAddress": "10.0.9.251",
 			   "adminAccessRange": "[parameters('adminAccessRange')]",
 					   "AzureDNS": "168.63.129.16"
         },

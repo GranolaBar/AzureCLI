@@ -37,6 +37,7 @@
     <None Include="Scripts\Deploy-AzureResourceGroup.ps1" />
     <None Include="Templates\metadata.json" />
     <None Include="Templates\vdc-adtier-azuredeploy.json" />
+    <None Include="Templates\vdc-shared-azuredeploy-PostSecondDC.json" />
     <None Include="Templates\vdc-shared-azuredeploy-PostFirstDC.json" />
     <None Include="Templates\vdc-sqltier-azuredeploy.json" />
     <None Include="Templates\vdc-dmztier-azuredeploy.json" />
