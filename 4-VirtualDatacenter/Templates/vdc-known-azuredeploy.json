@@ -177,7 +177,7 @@
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-            "dependsOn": [ "Microsoft.Resources/deployments/adTier" ],
+            "dependsOn": [ "Microsoft.Resources/deployments/adTier1" ],
 
             "properties": {
                 "mode": "incremental",
@@ -205,7 +205,7 @@
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-            "dependsOn": [ "Microsoft.Resources/deployments/adTier" ],
+            "dependsOn": [ "Microsoft.Resources/deployments/adTier1" ],
 
             "properties": {
                 "mode": "incremental",
