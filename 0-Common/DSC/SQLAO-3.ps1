@@ -159,6 +159,20 @@ Configuration DemoSQL
 
 
 
+		xDatabaseServer SetMixedMode                       # We need mixed auto mode on SQL
+		{
+			LoginMode        = "Mixed"
+		}  
+
+		xDatabaseLogin AppCred                             # We need to set the password for the login (bacpac provides login but no password)
+		{
+			Ensure                  = "Present"
+			LoginName               = "MSFTAzureARM"
+			LoginPassword           = "rQ53uUn3rm"
+			SQLAuthType             = "Windows"
+			SQLServer               = "localhost"
+		} 
+
 
 
         xSqlLogin AddSqlServerServiceAccountToSysadminServerRole           # we created a service account - make that an admin too
