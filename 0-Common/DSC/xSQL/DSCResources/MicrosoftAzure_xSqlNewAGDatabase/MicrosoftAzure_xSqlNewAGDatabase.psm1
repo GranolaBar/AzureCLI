@@ -6,8 +6,6 @@
         [ValidateNotNullOrEmpty()]
         [PSCredential] $SqlAdministratorCredential,
 
-        [parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
         [String[]]$DatabaseNames,
         
         [parameter(Mandatory)]
@@ -43,8 +41,6 @@ function Set-TargetResource
         [ValidateNotNullOrEmpty()]
         [string]$SqlAlwaysOnAvailabilityGroupName,
 
-        [parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
         [String[]]$DatabaseNames,
         
         [parameter(Mandatory)]
@@ -74,8 +70,6 @@ function Test-TargetResource
         [ValidateNotNullOrEmpty()]
         [PSCredential] $SqlAdministratorCredential,
 
-        [parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
         [String[]]$DatabaseNames,
         
         [parameter(Mandatory)]
@@ -298,19 +292,19 @@ function Update-SqlAlwaysOnAvailabilityGroupDatabases([String]$SqlAlwaysOnAvaila
     $secondaryAGReplica = $primaryAG.AvailabilityReplicas | where { $_.Name -eq $SecondaryReplica }
 
     # Verify the replica is in read only mode. If not, then set it
-    if($secondaryAGReplica.ConnectionModeInSecondaryRole -ne [Microsoft.SqlServer.Management.Smo.AvailabilityReplicaConnectionModeInSecondaryRole]::AllowReadIntentConnectionsOnly)
-    {
-        Write-Verbose -Message "Setting replica $SecondaryReplica read only mode"
+    #if($secondaryAGReplica.ConnectionModeInSecondaryRole -ne [Microsoft.SqlServer.Management.Smo.AvailabilityReplicaConnectionModeInSecondaryRole]::AllowReadIntentConnectionsOnly)
+    #{
+    #    Write-Verbose -Message "Setting replica $SecondaryReplica read only mode"
 
-        $secondaryAGReplica.ConnectionModeInSecondaryRole = [Microsoft.SqlServer.Management.Smo.AvailabilityReplicaConnectionModeInSecondaryRole]::AllowReadIntentConnectionsOnly
-        $secondaryAGReplica.Alter()
+    #    $secondaryAGReplica.ConnectionModeInSecondaryRole = [Microsoft.SqlServer.Management.Smo.AvailabilityReplicaConnectionModeInSecondaryRole]::AllowReadIntentConnectionsOnly
+    #    $secondaryAGReplica.Alter()
 
-        Write-Verbose -Message "Set replica $SecondaryReplica read only mode completed!"
-    }
-    else
-    {
-        Write-Verbose -Message "Replica $SecondaryReplica is already in read only mode"
-    }
+    #    Write-Verbose -Message "Set replica $SecondaryReplica read only mode completed!"
+    #}
+    #else
+    #{
+    #    Write-Verbose -Message "Replica $SecondaryReplica is already in read only mode"
+    #}
 
     Write-Verbose -Message "Cleaning up backups ..."
     Remove-SmbShare -Name $backupFolder -Force | Out-Null

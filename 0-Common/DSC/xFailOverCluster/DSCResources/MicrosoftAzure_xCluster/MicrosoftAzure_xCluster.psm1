@@ -70,116 +70,154 @@ function Set-TargetResource
         [string[]] $Nodes
     )
 
-    $bCreate = $true
+	$ErrorActionPreference = "Silently Continue"
+    ($oldToken, $context, $newToken) = ImpersonateAs -cred $DomainAdministratorCredential
 
-    Write-Verbose -Message "Checking if cluster '$($Name)' is present ..."
-    try
-    {
-        $ComputerInfo = Get-WmiObject Win32_ComputerSystem
-        if (($ComputerInfo -eq $null) -or ($ComputerInfo.Domain -eq $null))
-        {
-            throw "Can't find machine's domain name."
-        }
+	$cluster = New-Cluster -Name $Name -Node $env:COMPUTERNAME -NoStorage -Force -ErrorAction SilentlyContinue
+	$clusterGroup = $cluster | Get-ClusterGroup
+	$clusterNameRes = $clusterGroup | Get-ClusterResource "Cluster Name"
+	$clusterNameRes | Stop-ClusterResource | Out-Null
+	$clusterIpAddrRes = $clusterGroup | Get-ClusterResource | Where-Object { $_.ResourceType.Name -in "IP Address", "IPv6 Address", "IPv6 Tunnel Address" }
+	$clusterIpAddrRes | Stop-ClusterResource | Out-Null
+	$firstClusterIpv4AddrRes = $clusterIpAddrRes | Where-Object { $_.ResourceType.Name -eq "IP Address" } | Select-Object -First 1
+	$clusterIpAddrRes | Where-Object { $_.Name -ne $firstClusterIpv4AddrRes.Name } | Remove-ClusterResource -Force | Out-Null
+	$clusterIpAddrRes | Set-ClusterParameter -Multiple @{
+	   "Address" = "169.254.1.1"
+	   "SubnetMask" = "255.255.0.0"
+	   "EnableDhcp" = 0
+	   "OverrideAddressMatch" = 1            } #-ErrorAction STOP
+	$clusterNameRes | Start-ClusterResource -ErrorAction SilentlyContinue | Out-Null
+	Start-Cluster -Name $Name -ErrorAction SilentlyContinue | Out-Null
 
-        $cluster = Get-Cluster -Name $Name -Domain $ComputerInfo.Domain
-        if ($cluster)
-        {
-            $bCreate = $false
-        }
-    }
-    catch
-    {
-        $bCreate = $true
-    }
 
-    try
-    {
-        ($oldToken, $context, $newToken) = ImpersonateAs -cred $DomainAdministratorCredential
+	$cluster | Add-ClusterNode "my4appqasqlvm1.Fabrikam.com"   -NoStorage     -ErrorAction SilentlyContinue
 
-        if ($bCreate)
-        {
-            Write-Verbose -Message "Cluster '$($Name)' is NOT present."
-            $cluster = New-Cluster -Name $Name -Node $env:COMPUTERNAME -NoStorage -Force -ErrorAction Stop
-            Write-Verbose -Message "Successfully created cluster '$($Name)'."
 
-            # See http://social.technet.microsoft.com/wiki/contents/articles/14776.how-to-configure-windows-failover-cluster-in-azure-for-alwayson-availability-groups.aspx
-            # for why the following workaround is necessary.
-            Write-Verbose -Message "Stopping the Cluster Name resource ..."
-            $clusterGroup = $cluster | Get-ClusterGroup
-            $clusterNameRes = $clusterGroup | Get-ClusterResource "Cluster Name"
-            $clusterNameRes | Stop-ClusterResource | Out-Null
 
-            Write-Verbose -Message "Stopping the Cluster IP Address resources ..."
-            $clusterIpAddrRes = $clusterGroup | Get-ClusterResource | Where-Object { $_.ResourceType.Name -in "IP Address", "IPv6 Address", "IPv6 Tunnel Address" }
-            $clusterIpAddrRes | Stop-ClusterResource | Out-Null
 
-            Write-Verbose -Message "Removing all Cluster IP Address resources except the first IPv4 Address ..."
-            $firstClusterIpv4AddrRes = $clusterIpAddrRes | Where-Object { $_.ResourceType.Name -eq "IP Address" } | Select-Object -First 1
-            $clusterIpAddrRes | Where-Object { $_.Name -ne $firstClusterIpv4AddrRes.Name } | Remove-ClusterResource -Force | Out-Null
-
-            Write-Verbose -Message "Seting the Cluster IP Address to a local link address ..."
-            $clusterIpAddrRes | Set-ClusterParameter -Multiple @{
-                "Address" = "169.254.1.1"
-                "SubnetMask" = "255.255.0.0"
-                "EnableDhcp" = 0
-                "OverrideAddressMatch" = 1
-            } -ErrorAction Stop
-
-            Write-Verbose -Message "Starting the Cluster Name resource ..."
-            $clusterNameRes | Start-ClusterResource -ErrorAction Stop | Out-Null
-
-            Write-Verbose -Message "Starting Cluster '$($Name)' ..."
-            Start-Cluster -Name $Name -ErrorAction Stop | Out-Null
-        }
-        $version=[system.environment]::OSVersion.Version
-        if (($version.Major -eq 6) -and ($version.Minor -eq 3))
-        {
-            $nostorage=$true
-        }
-        else
-        {
-            $nostorage=$false
-        } 
-        Write-Verbose -Message "Adding specified nodes to cluster '$($Name)' ..."
-        $allNodes = Get-ClusterNode -Cluster $Name
-        foreach ($node in $Nodes)
-        {
-            $foundNode = $allNodes | where-object { $_.Name -eq $node }
-
-            if ($foundNode -and ($foundNode.State -ne "Up"))
-            {
-                Write-Verbose -Message "Removing node '$($node)' since it's in the cluster but is not UP ..."
-                Remove-ClusterNode $foundNode -Cluster $cluster -Force | Out-Null
-            }
-            elseif ($foundNode)
-            {
-                Write-Verbose -Message "Node $($node)' already in the cluster, skipping ..."
-                continue
-            }
-
-            if ( $nostorage)
-            {
-                $cluster | Add-ClusterNode $node -NoStorage -ErrorAction Stop | Out-Null
-                Write-Verbose -Message "Adding node $($node)' to the cluster without storage ..."
-           
-            }
-            else
-            {
-                Write-Verbose -Message "Adding node $($node)' to the cluster"
-                $cluster | Add-ClusterNode $node -ErrorAction Stop | Out-Null
-            }
-            Write-Verbose -Message "Successfully added node $($node)' to cluster '$($Name)'."
-        }
-    }
-    finally
-    {
-        if ($context)
+ 
+	 if ($context)
         {
             $context.Undo()
             $context.Dispose()
             CloseUserToken($newToken)
         }
-    }
+
+
+
+    #$bCreate = $true
+
+
+    #Write-Verbose -Message "Checking if cluster '$($Name)' is present ..."
+    #try
+    #{
+    #    $ComputerInfo = Get-WmiObject Win32_ComputerSystem
+    #    if (($ComputerInfo -eq $null) -or ($ComputerInfo.Domain -eq $null))
+    #    {
+    #        throw "Can't find machine's domain name."
+    #    }
+
+    #    $cluster = Get-Cluster -Name $Name -Domain $ComputerInfo.Domain
+    #    if ($cluster)
+    #    {
+    #        $bCreate = $false
+    #    }
+    #}
+    #catch
+    #{
+    #    $bCreate = $true
+    #}
+
+    #try
+    #{
+    #    ($oldToken, $context, $newToken) = ImpersonateAs -cred $DomainAdministratorCredential
+
+    #    if ($bCreate)
+    #    {
+    #        Write-Information -Message "Cluster '$($Name)' is NOT present."
+    #        $cluster = New-Cluster -Name $Name -Node $env:COMPUTERNAME -NoStorage -Force #-ErrorAction Stop
+    #        Write-Information -Message "Successfully created cluster '$($Name)'."
+
+    #        # See http://social.technet.microsoft.com/wiki/contents/articles/14776.how-to-configure-windows-failover-cluster-in-azure-for-alwayson-availability-groups.aspx
+    #        # for why the following workaround is necessary.
+    #        Write-Verbose -Message "Stopping the Cluster Name resource ..."
+    #        $clusterGroup = $cluster | Get-ClusterGroup
+    #        $clusterNameRes = $clusterGroup | Get-ClusterResource "Cluster Name"
+    #        $clusterNameRes | Stop-ClusterResource | Out-Null
+
+    #        Write-Verbose -Message "Stopping the Cluster IP Address resources ..."
+    #        $clusterIpAddrRes = $clusterGroup | Get-ClusterResource | Where-Object { $_.ResourceType.Name -in "IP Address", "IPv6 Address", "IPv6 Tunnel Address" }
+    #        $clusterIpAddrRes | Stop-ClusterResource | Out-Null
+
+    #        Write-Verbose -Message "Removing all Cluster IP Address resources except the first IPv4 Address ..."
+    #        $firstClusterIpv4AddrRes = $clusterIpAddrRes | Where-Object { $_.ResourceType.Name -eq "IP Address" } | Select-Object -First 1
+    #        $clusterIpAddrRes | Where-Object { $_.Name -ne $firstClusterIpv4AddrRes.Name } | Remove-ClusterResource -Force | Out-Null
+
+    #        Write-Verbose -Message "Seting the Cluster IP Address to a local link address ..."
+    #        $clusterIpAddrRes | Set-ClusterParameter -Multiple @{
+    #            "Address" = "169.254.1.1"
+    #            "SubnetMask" = "255.255.0.0"
+    #            "EnableDhcp" = 0
+    #            "OverrideAddressMatch" = 1            } #-ErrorAction STOP
+
+    #        Write-Verbose -Message "Starting the Cluster Name resource ..."
+    #        $clusterNameRes | Start-ClusterResource -ErrorAction SilentlyContinue | Out-Null
+
+    #        Write-Verbose -Message "Starting Cluster '$($Name)' ..."
+    #        Start-Cluster -Name $Name -ErrorAction SilentlyContinue | Out-Null
+    #    }
+    #    $version=[system.environment]::OSVersion.Version
+    #    if (($version.Major -eq 6) -and ($version.Minor -eq 3))
+    #    {
+    #        $nostorage=$true
+    #    }
+    #    else
+    #    {
+    #        $nostorage=$false
+    #    } 
+    #    Write-Information -Message "Adding specified nodes to cluster '$($Name)' ..."
+    #    $allNodes = Get-ClusterNode -Cluster $Name
+    #    foreach ($node in $Nodes)
+    #    {
+    #        $foundNode = $allNodes | where-object { $_.Name -eq $node }
+
+    #        if ($foundNode -and ($foundNode.State -ne "Up"))
+    #        {
+    #            Write-Information -Message "Removing node '$($node)' since it's in the cluster but is not UP ..."
+    #            Remove-ClusterNode $foundNode -Cluster $cluster -Force | Out-Null
+    #        }
+    #        elseif ($foundNode)
+    #        {
+    #            Write-Information -Message "Node $($node)' already in the cluster, skipping ..."
+    #            continue
+    #        }
+
+    #        if ( $nostorage)
+    #        {
+    #            $cluster | Add-ClusterNode $node -NoStorage #-ErrorAction Stop | Out-Null
+    #            Write-Information -Message "Adding node $($node)' to the cluster without storage ..."
+           
+    #        }
+    #        else
+    #        {
+    #            Write-Verbose -Message "Adding node $($node)' to the cluster"
+    #            $cluster | Add-ClusterNode $node #-ErrorAction Stop | Out-Null
+    #        }
+    #        Write-Verbose -Message "Successfully added node $($node)' to cluster '$($Name)'."
+    #    }
+    #}
+    #finally
+    #{
+    #    if ($context)
+    #    {
+    #        $context.Undo()
+    #        $context.Dispose()
+    #        CloseUserToken($newToken)
+    #    }
+    #}
+
+
+
 }
 
 #
@@ -204,80 +242,81 @@ function Test-TargetResource
         [string[]] $Nodes
     )
 
+	$ErrorActionPreference = "Silently Continue"
     $bRet = $false
 
-    Write-Verbose -Message "Checking if cluster '$($Name)' is present ..."
-    try
-    {
+    #Write-Verbose -Message "Checking if cluster '$($Name)' is present ..."
+    #try
+    #{
 
-        $ComputerInfo = Get-WmiObject Win32_ComputerSystem
-        if (($ComputerInfo -eq $null) -or ($ComputerInfo.Domain -eq $null))
-        {
-            Write-Verbose -Message "Can't find machine's domain name."
-            $bRet = $false
-        }
-        else
-        {
-            try
-            {
-                ($oldToken, $context, $newToken) = ImpersonateAs -cred $DomainAdministratorCredential
+    #    $ComputerInfo = Get-WmiObject Win32_ComputerSystem
+    #    if (($ComputerInfo -eq $null) -or ($ComputerInfo.Domain -eq $null))
+    #    {
+    #        Write-Verbose -Message "Can't find machine's domain name."
+    #        $bRet = $false
+    #    }
+    #    else
+    #    {
+    #        try
+    #        {
+    #            ($oldToken, $context, $newToken) = ImpersonateAs -cred $DomainAdministratorCredential
 
-                $cluster = Get-Cluster -Name $Name -Domain $ComputerInfo.Domain
-                Write-Verbose -Message "Cluster $($Name)' is present."
+    #            $cluster = Get-Cluster -Name $Name -Domain $ComputerInfo.Domain
+    #            Write-Verbose -Message "Cluster $($Name)' is present."
 
-                if ($cluster)
-                {
-                    Write-Verbose -Message "Checking if the expected nodes are in cluster $($Name)' ..."
-                    $allNodes = Get-ClusterNode -Cluster $Name
-                    $bRet = $true
-                    foreach ($node in $Nodes)
-                    {
-                        $foundNode = $allNodes | where-object { $_.Name -eq $node }
+    #            if ($cluster)
+    #            {
+    #                Write-Verbose -Message "Checking if the expected nodes are in cluster $($Name)' ..."
+    #                $allNodes = Get-ClusterNode -Cluster $Name
+    #                $bRet = $true
+    #                foreach ($node in $Nodes)
+    #                {
+    #                    $foundNode = $allNodes | where-object { $_.Name -eq $node }
 
-                        if (!$foundNode)
-                        {
-                            Write-Verbose -Message "Node '$($node)' NOT found in the cluster."
-                            $bRet = $bRet -and $false
-                        }
-                        elseif ($foundNode.State -ne "Up")
-                        {
-                            Write-Verbose -Message "Node '$($node)' found in the cluster, but is not UP."
-                            $bRet = $bRet -and $false
-                        }
-                        else
-                        {
-                            Write-Verbose -Message "Node '$($node)' found in the cluster."
-                            $bRet = $bRet -and $true
-                        }
-                    }
+    #                    if (!$foundNode)
+    #                    {
+    #                        Write-Verbose -Message "Node '$($node)' NOT found in the cluster."
+    #                        $bRet = $bRet -and $false
+    #                    }
+    #                    elseif ($foundNode.State -ne "Up")
+    #                    {
+    #                        Write-Verbose -Message "Node '$($node)' found in the cluster, but is not UP."
+    #                        $bRet = $bRet -and $false
+    #                    }
+    #                    else
+    #                    {
+    #                        Write-Verbose -Message "Node '$($node)' found in the cluster."
+    #                        $bRet = $bRet -and $true
+    #                    }
+    #                }
 
-                    if ($bRet)
-                    {
-                        Write-Verbose -Message "All expected nodes found in cluster $($Name)."
-                    }
-                    else
-                    {
-                        Write-Verbose -Message "At least one node is missing from cluster $($Name)."
-                    }
-                }
-            }
-            finally
-            {    
-                if ($context)
-                {
-                    $context.Undo()
-                    $context.Dispose()
+    #                if ($bRet)
+    #                {
+    #                    Write-Verbose -Message "All expected nodes found in cluster $($Name)."
+    #                }
+    #                else
+    #                {
+    #                    Write-Verbose -Message "At least one node is missing from cluster $($Name)."
+    #                }
+    #            }
+    #        }
+    #        finally
+    #        {    
+    #            if ($context)
+    #            {
+    #                $context.Undo()
+    #                $context.Dispose()
 
-                    CloseUserToken($newToken)
-                }
-            }
-        }
-    }
-    catch
-    {
-        Write-Verbose -Message "Error testing cluster $($Name)."
-        throw $_
-    }
+    #                CloseUserToken($newToken)
+    #            }
+    #        }
+    #    }
+    #}
+    #catch
+    #{
+    #    Write-Verbose -Message "Error testing cluster $($Name)."
+    #    throw $_
+    #}
 
     $bRet
 }

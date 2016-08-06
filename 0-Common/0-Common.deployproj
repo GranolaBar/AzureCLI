@@ -292,6 +292,8 @@
     <None Include="DSC\xSmbShare\DscResources\MSFT_xSmbShare\MSFT_xSmbShare.psm1" />
     <None Include="DSC\xSmbShare\DscResources\MSFT_xSmbShare\MSFT_xSmbShare.schema.mof" />
     <None Include="DSC\xSmbShare\xSmbShare.psd1" />
+    <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSQLAddListenerIPToDNS\MicrosoftAzure_xSQLAddListenerIPToDNS.psm1" />
+    <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSQLAddListenerIPToDNS\MicrosoftAzure_xSQLAddListenerIPToDNS.schema.mof" />
     <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlAvailabilityGroupListener\MicrosoftAzure_xSqlAvailabilityGroupListener.psm1" />
     <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlAvailabilityGroupListener\MicrosoftAzure_xSqlAvailabilityGroupListener.schema.mof" />
     <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlAvailabilityGroup\MicrosoftAzure_xSqlAvailabilityGroup.psm1" />
@@ -304,6 +306,8 @@
     <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlNewAGDatabase\MicrosoftAzure_xSqlNewAGDatabase.schema.mof" />
     <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlServer\MicrosoftAzure_xSqlServer.psm1" />
     <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlServer\MicrosoftAzure_xSqlServer.schema.mof" />
+    <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlTestAGDatabase\MicrosoftAzure_xSqlTestAGDatabase.psm1" />
+    <None Include="DSC\xSQL\DSCResources\MicrosoftAzure_xSqlTestAGDatabase\MicrosoftAzure_xSqlTestAGDatabase.schema.mof" />
     <None Include="DSC\xSQL\xSql.psd1" />
     <None Include="DSC\xStorage\2.6.0.0\DSCResources\MSFT_xDisk\MSFT_xDisk.psm1" />
     <None Include="DSC\xStorage\2.6.0.0\DSCResources\MSFT_xDisk\MSFT_xDisk.schema.mof" />

@@ -14,8 +14,6 @@ Configuration DemoSQL
            [Int]$RetryIntervalSec   = 30
     )
 
-	Import-DscResource -Module xPSDesiredStateConfiguration
-	Import-DscResource -Module xDatabase
 
 	Import-DscResource -Module xStorage
 	Import-DscResource -Module cDisk
@@ -23,17 +21,15 @@ Configuration DemoSQL
 	Import-DscResource -Module xActiveDirectory
 	Import-DscResource -Module xNetworking
 	Import-DscResource -Module xSQL
+	Import-DscResource -Module xDatabase
 
 #	Import-DscResource -Module xPSDesiredStateConfiguration
-#	Import-DscResource -Module xDatabase
 #	Import-DscResource -Module xFailoverCluster
 
 	$SQLServiceAccount  = "PuppyDog"
 
     [System.Management.Automation.PSCredential]$SQLServiceCreds = New-Object System.Management.Automation.PSCredential ("${DomainNetbiosName}\$SQLServiceAccount", $DomainUserAccount.Password)
-	
-	$bacpac = "FabrikamFiber.bacpac"
-	$stagingFolder  = "C:\Packages"
+
 	
 	Node localhost
 	{
@@ -180,21 +176,7 @@ Configuration DemoSQL
 
 
 
-		xRemoteFile GetBacpac
-		{  
-			URI             = $SampleAppLocation + '\' + $bacpac
-			DestinationPath =     $stagingFolder + '\' + $bacpac
-		}         
-
-		xDatabase LoadDB                                   # Load bacpac, which ale create login for db user
-		{
-			Ensure           = "Present"
-			SqlServer        = "localhost"
-			SqlServerVersion = "2014"
-			BacPacPath       = $stagingFolder + '\' + $bacpac
-			DatabaseName     = 'FabrikamFiber'
-			DependsOn        = "[xRemoteFile]GetBacpac"
-		} 
+	
 
 		xDatabaseServer SetMixedMode                       # We need mixed auto mode on SQL
 		{
@@ -208,15 +190,7 @@ Configuration DemoSQL
 			LoginPassword           = "rQ53uUn3rm"
 			SQLAuthType             = "Windows"
 			SQLServer               = "localhost"
-			DependsOn               = "[xDatabase]LoadDB"
 		} 
-
-
-
-
-
-
-
 
 
 	}

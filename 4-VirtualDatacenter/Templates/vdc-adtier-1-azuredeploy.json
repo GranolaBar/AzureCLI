@@ -1,0 +1,153 @@
+﻿{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    
+    "parameters": {
+        "commonSettings":           { "type": "object",                     "metadata": { "description": "Common API values"                      } },
+        "virtualNetworkParameters": { "type": "object",                     "metadata": { "description": "Common VNET values"                     } },
+           "availabilitySetName":   { "type": "string",                     "metadata": { "description": "Name of the Availability Set"           } },
+        "diagStorageAccountName":   { "type": "string",                     "metadata": { "description": "Name of Storage Account for diagnostics"} },
+        "diskStorageAccountRoot":   { "type": "string",                     "metadata": { "description": "Name of Storage Account for vhds"       } },
+                        "vmName":   { "type": "string",                     "metadata": { "description": "RootName of the VM's"                   } }
+    },
+
+	"variables": {
+		 "vm1Name": "[concat(parameters( 'vmName'),0)                ]",
+		 "vm2Name": "[concat(parameters( 'vmName'),1)                ]",
+		"nic1Name": "[concat( variables('vm1Name'),'-nic')           ]",
+		"nic2Name": "[concat( variables('vm2Name'),'-nic')           ]",
+		 "sa1Name": "[concat(parameters('diskStorageAccountRoot'),0) ]",
+		 "sa2Name": "[concat(parameters('diskStorageAccountRoot'),1) ]"
+	},
+
+	"resources": [
+
+		{
+			"name": "AS",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/availability-set.json')]" },
+
+				"parameters": {
+					"commonSettings":      { "value": "[parameters('commonSettings')]"      },
+					"availabilitySetName": { "value": "[parameters('availabilitySetName')]" }
+				}
+			}
+		},
+
+
+
+		{
+			"name": "ADsa1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/storage-account.json')]" },
+
+				"parameters": {
+					"commonSettings":     { "value": "[parameters('commonSettings') ]" },
+					"storageAccountName": { "value": "[ variables('sa1Name')        ]" }
+				}
+			}
+		},
+
+
+
+		{
+			"name": "[variables('nic1Name') ]",
+			"type": "Microsoft.Network/networkInterfaces",
+			"location": "[resourceGroup().location]",
+			"apiVersion": "2016-03-30",
+
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Static",
+							"privateIPAddress":          "[parameters('virtualNetworkParameters').adDC1IPAddress]",
+							"subnet": { "id": "[  concat(resourceId('Microsoft.Network/virtualNetworks',  parameters('virtualNetworkParameters').virtualNetworkName),'/subnets/',parameters('virtualNetworkParameters').adSubnetName)]" }
+						}
+					}
+				],
+				"dnsSettings": { "dnsServers": [ "[parameters('virtualNetworkParameters').AzureDNS]" ] }
+			}
+		},
+
+
+
+		{
+			"name": "ADvm1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+			"dependsOn": [
+				"Microsoft.Resources/deployments/AS",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nic1Name'))]",
+				"Microsoft.Resources/deployments/ADsa1"
+			],
+
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/vm-via-nic-with-availability-set.json')]" },
+
+				"parameters": {
+					"commonSettings":         { "value": "[parameters('commonSettings')          ]" },
+					"vmName":                 { "value": "[ variables('vm1Name')                 ]" },
+					"diskStorageAccountName": { "value": "[ variables('sa1Name')                 ]" },
+					"diagStorageAccountName": { "value": "[parameters('diagStorageAccountName')  ]" },
+					"nicName":                { "value": "[ variables('nic1Name')                ]" },
+					"availabilitySetName":    { "value": "[parameters('availabilitySetName')     ]" }
+				}
+			}
+		},
+
+
+
+		{
+			"name": "AD1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+			"dependsOn": [ "Microsoft.Resources/deployments/ADvm1" ],
+
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/applyDSC',parameters('commonSettings').deploySwitch,'.json')]" },
+
+				"parameters": {
+					"commonSettings": { "value": "[parameters('commonSettings') ]" },
+					"vmName":         { "value": "[ variables('vm1Name')        ]" },
+					"scriptName":     { "value": "AD-First.ps1"                    },
+					"configName":     { "value": "DemoAD1"                         }
+				}
+			}
+		},
+
+
+
+		{
+			"name": "POST-AD1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+			"dependsOn": [ "Microsoft.Resources/deployments/AD1" ],
+
+			"properties": {
+				"mode": "incremental",
+				"templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-shared-azuredeploy-PostFirstDC.json')]" },
+
+				"parameters": {
+					"commonSettings":           { "value": "[parameters('commonSettings')          ]" },
+					"virtualNetworkParameters": { "value": "[parameters('virtualNetworkParameters')]" }
+				}
+			}
+		}
+
+	]
+}

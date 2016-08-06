@@ -40,6 +40,8 @@ function Get-TargetResource
         [PSCredential] $DomainAdministratorCredential
     )
 
+    Import-Module "C:\Program Files (x86)\Microsoft SQL Server\120\Tools\PowerShell\Modules\SQLPS" -DisableNameChecking | Out-Null
+
     $s = Get-SqlServer -InstanceName $InstanceName -Credential $SqlAdministratorCredential
 
     $serviceAccount = Get-ServiceAccount -InstanceName $InstanceName -Server $s
@@ -92,6 +94,8 @@ function Set-TargetResource
         [ValidateNotNullOrEmpty()]
         [PSCredential] $DomainAdministratorCredential
     )
+
+    Import-Module "C:\Program Files (x86)\Microsoft SQL Server\120\Tools\PowerShell\Modules\SQLPS" -DisableNameChecking | Out-Null
 
     Write-Verbose -Message "Configuring SQL Server instance '$($InstanceName)' ..."
 
@@ -190,7 +194,7 @@ function Set-TargetResource
             $instanceName="MSSQLSERVER"
         }
         else
-        {      
+        {
             $serverInstance = $InstanceName
             if ($list.Count -eq 1 )
             {
@@ -203,7 +207,7 @@ function Set-TargetResource
                 $instanceName="MSSQLSERVER"
             }
         }
-        
+
         if ($instanceName -eq "MSSQLSERVER")
         {
             $path="SQLSERVER:\SQL\${computerName}\Default"
@@ -221,9 +225,9 @@ function Set-TargetResource
         {
             Invoke-Command -ScriptBlock ${Function:Set-HADR} -ComputerName $computerName -Credential $DomainAdministratorCredential -ArgumentList $path,$Hadr
         }
-       
+
     }
-    
+
     $bCheck = $s.DefaultFile.TrimEnd("\") -eq $FilePath.TrimEnd("\")
     if ($FilePath -and !$bCheck)
     {
@@ -284,6 +288,8 @@ function Test-TargetResource
         [ValidateNotNullOrEmpty()]
         [PSCredential] $DomainAdministratorCredential
     )
+
+    Import-Module "C:\Program Files (x86)\Microsoft SQL Server\120\Tools\PowerShell\Modules\SQLPS" -DisableNameChecking | Out-Null
 
     Write-Verbose -Message "Testing the SQL Server instance '$($InstanceName)' ..."
 
@@ -396,14 +402,14 @@ function Set-HADR()
     )
 
 
-    import-module sqlps -DisableNameChecking|Out-Null
+    Import-Module "C:\Program Files (x86)\Microsoft SQL Server\120\Tools\PowerShell\Modules\SQLPS" -DisableNameChecking | Out-Null
 
     $VerbosePreference='Continue'
 
     $loopnumber=1
     $loopuntil=5
 
-    do 
+    do
     {
         try {
             if ($Hadr -eq "Enabled")
@@ -581,11 +587,11 @@ function Set-ServiceAccount([PSCredential]$Credential, [string]$InstanceName, [M
     $svc.SetServiceAccount($Credential.UserName, $Credential.GetNetworkCredential().Password)
 }
 
-function Start-SqlServer   
+function Start-SqlServer
 {
     [OutputType([System.Boolean])]
     param(
-   
+
         [string]$InstanceName,
 
         [UInt64]$RetryIntervalSec = 20,
@@ -604,8 +610,8 @@ function Start-SqlServer
     }
 
     for ($count = 0; $count -lt $RetryCount; $count++) {
-        try {  
-            
+        try {
+
             $svc = get-service $InstanceName -ErrorAction SilentlyContinue
             if ($svc.Status -ne 'Running') {
                 Write-Verbose -Message "Trying to start SQL Server"
@@ -614,20 +620,20 @@ function Start-SqlServer
             else {
                 return $true
             }
-        
+
         }
         catch {
-            
+
         Write-Verbose -Message "SQL Server not Started"
         if ($svc) {
             Write-Verbose "Service Status $svc.Status"
         }
         if ($error[0]) {
-            Write-Verbose ("Error:" + $_) 
+            Write-Verbose ("Error:" + $_)
         }
         Write-Verbose -Message "Retrying in $RetryIntervalSec seconds ..."
         Start-Sleep -Seconds $RetryIntervalSec
-        
+
         }
     }
 
@@ -884,7 +890,7 @@ function ImpersonateAs([PSCredential] $cred)
     $userToken
     $ImpersonateLib = Get-ImpersonateLib
 
-    $bLogin = $ImpersonateLib::LogonUser($cred.GetNetworkCredential().UserName, $cred.GetNetworkCredential().Domain, $cred.GetNetworkCredential().Password, 
+    $bLogin = $ImpersonateLib::LogonUser($cred.GetNetworkCredential().UserName, $cred.GetNetworkCredential().Domain, $cred.GetNetworkCredential().Password,
     9, 0, [ref]$userToken)
 
     if ($bLogin)

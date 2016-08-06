@@ -34,7 +34,6 @@
                     "mgmtVmName":   { "type": "string",                         "metadata": { "description": "RootName of the VM's of the mgmt tier"  } },
 
          "adAvailabilitySetName":   { "type": "string",                         "metadata": { "description": "Name of the AD Availability Set"        } },
-               "adInstanceCount":   { "type": "int",    "defaultValue": 1,      "metadata": { "description": "Number of ad Instances to create"       } },
                       "adVmName":   { "type": "string",                         "metadata": { "description": "RootName of the VM's of the AD tier"    } }
     },
 
@@ -78,19 +77,39 @@
 
 
         {
-            "name": "adTier",
+            "name": "adTier1",
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
             "properties": {
                 "mode": "incremental",
-                "templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-adtier-azuredeploy.json')]" },
+                "templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-adtier-1-azuredeploy.json')]" },
 
                 "parameters": {
                     "commonSettings":           { "value": "[parameters('commonSettings')]"                      },
                     "virtualNetworkParameters": { "value": "[parameters('virtualNetworkParameters')]"            },
                        "availabilitySetName":   { "value": "[       parameters( 'adAvailabilitySetName')      ]" },
-                             "instanceCount":   { "value": "[       parameters(       'adInstanceCount')      ]" },
+                    "diagStorageAccountName":   { "value": "[       parameters('diagStorageAccountName')      ]" },
+                    "diskStorageAccountRoot":   { "value": "[concat(parameters('diskStorageAccountRoot'),'ad')]" },
+                                    "vmName":   { "value": "[       parameters(              'adVmName')      ]" }
+                }
+            }
+        },
+        {
+            "name": "adTier2",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+            "dependsOn": [ "Microsoft.Resources/deployments/adtier1" ],
+
+            "properties": {
+                "mode": "incremental",
+                "templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-adtier-2-azuredeploy.json')]" },
+
+                "parameters": {
+                    "commonSettings":           { "value": "[parameters('commonSettings')]"                      },
+                    "virtualNetworkParameters": { "value": "[parameters('virtualNetworkParameters')]"            },
+                       "availabilitySetName":   { "value": "[       parameters( 'adAvailabilitySetName')      ]" },
                     "diagStorageAccountName":   { "value": "[       parameters('diagStorageAccountName')      ]" },
                     "diskStorageAccountRoot":   { "value": "[concat(parameters('diskStorageAccountRoot'),'ad')]" },
                                     "vmName":   { "value": "[       parameters(              'adVmName')      ]" }
@@ -132,7 +151,7 @@
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-            "dependsOn": [ "Microsoft.Resources/deployments/adTier" ],
+            "dependsOn": [ "Microsoft.Resources/deployments/adtier1" ],
 
             "properties": {
                 "mode": "incremental",

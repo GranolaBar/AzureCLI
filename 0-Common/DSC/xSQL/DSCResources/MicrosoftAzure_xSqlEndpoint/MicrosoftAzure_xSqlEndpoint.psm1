@@ -28,6 +28,8 @@ function Get-TargetResource
         [PSCredential] $SqlAdministratorCredential
     )
 
+    Import-Module "C:\Program Files (x86)\Microsoft SQL Server\120\Tools\PowerShell\Modules\SQLPS" -DisableNameChecking | Out-Null
+
     $s = Get-SqlServer -InstanceName $InstanceName -Credential $SqlAdministratorCredential
 
     $endpoint = $s.Endpoints | where { $_.Name -eq $Name }
@@ -69,6 +71,8 @@ function Set-TargetResource
         [ValidateNotNullOrEmpty()]
         [PSCredential] $SqlAdministratorCredential
     )
+
+    Import-Module "C:\Program Files (x86)\Microsoft SQL Server\120\Tools\PowerShell\Modules\SQLPS" -DisableNameChecking | Out-Null
 
     $s = Get-SqlServer -InstanceName $InstanceName -Credential $SqlAdministratorCredential
 
@@ -131,6 +135,8 @@ function Test-TargetResource
         [ValidateNotNullOrEmpty()]
         [PSCredential] $SqlAdministratorCredential
     )
+
+    Import-Module "C:\Program Files (x86)\Microsoft SQL Server\120\Tools\PowerShell\Modules\SQLPS" -DisableNameChecking | Out-Null
 
     $s = Get-SqlServer -InstanceName $InstanceName -Credential $SqlAdministratorCredential
 

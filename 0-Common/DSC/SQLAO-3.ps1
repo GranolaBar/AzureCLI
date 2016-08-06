@@ -9,13 +9,14 @@ Configuration DemoSQL
 		[Parameter(Mandatory=$true)] [ValidateNotNullorEmpty()] [PSCredential] $DomainUserAccount,
 		
 
-		[String[]]$Nodes            = @("my4appqasqlvm1.Fabrikam.com","my4appqasqlvm2.fabrikam.com"),
+		[String[]]$Nodes            = @("my4appqasqlvm2.Fabrikam.com","my4appqasqlvm1.Fabrikam.com"),
         [String]$DomainNetbiosName  = (Get-NetBIOSName -DomainName $domain),
         [UInt32]$DatabaseEnginePort = 1433,
 		   [Int]$RetryCount         = 20,
            [Int]$RetryIntervalSec   = 30,
 
 		[string]$LBName        = 'lb123',
+		[string]$LBFQName      = $LBName + '.' + $domain,
 		[string]$LBAddress     = '10.0.8.250',
 		[string]$DNSServerName = 'my4appqaadvm0',
 		[string]$DatabaseNames = 'FabrikamFiber'
@@ -23,6 +24,8 @@ Configuration DemoSQL
 	
     [string]$LBFQName="${LBName}.${$domain}"
 
+	Import-DscResource -Module xPSDesiredStateConfiguration
+	Import-DscResource -Module xDatabase
 	Import-DscResource -Module xStorage
 	Import-DscResource -Module cDisk
 	Import-DscResource -Module xComputerManagement
@@ -39,7 +42,10 @@ Configuration DemoSQL
 	$SqlAOAvailGrpLstn = $ClusterName + '-ls'
 
     [System.Management.Automation.PSCredential]$SQLServiceCreds = New-Object System.Management.Automation.PSCredential ("${DomainNetbiosName}\$SQLServiceAccount", $DomainUserAccount.Password)
+
 	
+	$bacpac = "FabrikamFiber.bacpac"
+	$stagingFolder  = "C:\Packages"	
 	
     Enable-CredSSPNTLM -DomainName $domain
 
@@ -87,6 +93,20 @@ Configuration DemoSQL
 			Name       = $env:COMPUTERNAME
 			DomainName = $domain
 			Credential = $DomainUserAccount
+		}
+
+		xCluster FailoverCluster
+        {
+            Name                          = $ClusterName
+            DomainAdministratorCredential = $DomainUserAccount
+            Nodes                         = $Nodes
+        }
+
+		xClusterQuorum FailoverClusterQuorum
+		{
+			Name                          = $ClusterName
+			DomainAdministratorCredential = $DomainUserAccount
+			SharePath                     = $SharePath
 		}
 
 
@@ -162,19 +182,9 @@ Configuration DemoSQL
         }
 
 
-		xCluster FailoverCluster
-        {
-            Name                          = $ClusterName
-            DomainAdministratorCredential = $DomainUserAccount
-            Nodes                         = $Nodes
-        }
+	
 
-		xClusterQuorum FailoverClusterQuorum
-		{
-			Name                          = $ClusterName
-			DomainAdministratorCredential = $DomainUserAccount
-			SharePath                     = $SharePath
-		}
+
 		
         xSqlServer ConfigureSqlServerWithAlwaysOn
         {
@@ -186,12 +196,12 @@ Configuration DemoSQL
             FilePath                      = "F:\DATA"
             LogPath                       = "F:\LOG"
             DomainAdministratorCredential = $DomainUserAccount
-            DependsOn                     = "[xSqlLogin]AddDomainAdminAccountToSysadminServerRole"
+            DependsOn                     = @("[xSqlLogin]AddDomainAdminAccountToSysadminServerRole","[xSqlLogin]AddSqlServerServiceAccountToSysadminServerRole")
         }
 
 		xSqlEndpoint SqlAlwaysOnEndpoint
 		{
-			InstanceName                  = $env:COMPUTERNAME
+			InstanceName                  = $Nodes[0]
 			Name                          = $SqlAOEndpointName
 			PortNumber                    = 5022
 			AllowedUser                   = $SQLServiceCreds.UserName
@@ -201,7 +211,7 @@ Configuration DemoSQL
 
 		xSqlServer ConfigureSqlServerSecondaryWithAlwaysOn
 		{
-			InstanceName                  = $Nodes[0]
+			InstanceName                  = $Nodes[1]
 			SqlAdministratorCredential    = $DomainUserAccount
 			Hadr                          = "Enabled"
 			DomainAdministratorCredential = $DomainUserAccount
@@ -210,14 +220,13 @@ Configuration DemoSQL
 
 		xSqlEndpoint SqlSecondaryAlwaysOnEndpoint
 		{
-			InstanceName               = $Nodes[0]
+			InstanceName               = $Nodes[1]
 			Name                       = $SqlAOEndpointName
 			PortNumber                 = 5022
 			AllowedUser                = $SQLServiceCreds.UserName
 			SqlAdministratorCredential = $DomainUserAccount
-			DependsOn                  = "[xSqlServer]ConfigureSqlServerSecondaryWithAlwaysOn"
+			DependsOn                  = "[xSqlServer]ConfigureSqlServerWithAlwaysOn"
 		}
-
 
 
 
@@ -258,6 +267,22 @@ Configuration DemoSQL
 		#	DependsOn                  = @("[xSqlAvailabilityGroup]SqlAG","[xSQLAddListenerIPToDNS]UpdateDNSServer")
 		#}
 
+		xRemoteFile GetBacpac
+		{  
+			URI             = $SampleAppLocation + '\' + $bacpac
+			DestinationPath =     $stagingFolder + '\' + $bacpac
+		}         
+
+		xDatabase LoadDB                                   # Load bacpac, which ale create login for db user
+		{
+			Ensure           = "Present"
+			SqlServer        = "localhost"
+			SqlServerVersion = "2014"
+			BacPacPath       = $stagingFolder + '\' + $bacpac
+			DatabaseName     = 'FabrikamFiber'
+			DependsOn        = "[xRemoteFile]GetBacpac"
+		} 
+
 		xSqlNewAGDatabase SQLAGDatabases
 		{
 			SqlAlwaysOnAvailabilityGroupName = $SqlAOAvailGrpName
@@ -265,17 +290,8 @@ Configuration DemoSQL
 			PrimaryReplica                   = $Nodes[0]
 			SecondaryReplica                 = $Nodes[1]
 			SqlAdministratorCredential       = $DomainUserAccount
-#			DependsOn                        = "[xSqlAvailabilityGroupListener]SqlAGListener"
+			DependsOn                        = "[xDatabase]LoadDB"
 		}
-
-		#xSqlTestAGDatabase SQLAGDatabasesVerification
-		#{
-		#	SqlAlwaysOnAvailabilityGroupName = $SqlAOAvailGrpName
-		#	InstanceName                     = $env:COMPUTERNAME
-		#	DomainCredential                 = $DomainUserAccount
-		#	DependsOn                        = "[xSqlNewAGDatabase]SQLAGDatabases"
-		#}
-
 
 	}
 }

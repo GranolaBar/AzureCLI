@@ -21,6 +21,8 @@ function Get-TargetResource
         [UInt32] $ListenerPortNumber = 1433,
 
         [UInt32] $ProbePortNumber = 59999,
+                
+        [String] $LBAddress,
 
         [parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
@@ -35,7 +37,7 @@ function Get-TargetResource
         [PSCredential] $SqlAdministratorCredential
     )
 
-    $bConfigured = Test-TargetResource -Name $Name -AvailabilityGroupName $AvailabilityGroupName -DomainNameFqdn $DomainNameFqdn -ListenerPortNumber $ListenerPortNumber -ProbePortNumber $ProbePortNumber -InstanceName  $InstanceName -DomainCredential $DomainCredential -SqlAdministratorCredential $SqlAdministratorCredential
+    $bConfigured = Test-TargetResource -Name $Name -AvailabilityGroupName $AvailabilityGroupName -DomainNameFqdn $DomainNameFqdn -ListenerPortNumber $ListenerPortNumber -ProbePortNumber $ProbePortNumber -InstanceName  $InstanceName -DomainCredential $DomainCredential -SqlAdministratorCredential $SqlAdministratorCredential -LBAddress $LBAddress
 
     $returnValue = @{
         Name = $Name
@@ -72,6 +74,8 @@ function Set-TargetResource
 
         [UInt32] $ProbePortNumber = 59999,
 
+        [String] $LBAddress,
+
         [parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [String] $InstanceName,
@@ -88,7 +92,15 @@ function Set-TargetResource
     $instance = Get-SqlInstanceName -Node  $env:COMPUTERNAME -InstanceName $InstanceName
     $s = Get-SqlServer -InstanceName $instance -Credential $SqlAdministratorCredential
 
-    $publicIpAddress = ([System.Net.DNS]::GetHostAddresses($DomainNameFqdn)).IPAddressToString
+    if (!$LBAddress) {
+
+        $publicIpAddress = ([System.Net.DNS]::GetHostAddresses($DomainNameFqdn)).IPAddressToString
+
+    } else {
+
+        $publicIpAddress = $LBAddress
+
+    }
 
     try
     {
@@ -104,7 +116,7 @@ function Set-TargetResource
                 Name = $Name
                 DnsName = $Name
             }
-            Add-ClusterResource -Name $Name -ResourceType "Network Name" -Group $AvailabilityGroupName -ErrorAction Stop |
+            Add-ClusterResource -Name $Name -ResourceType "Network Name" -Group $AvailabilityGroupName -ErrorAction SilentlyContinue |
                 Set-ClusterParameter -Multiple $params -ErrorAction Stop
 
             Write-Verbose -Message "Setting resource dependency between '$($AvailabilityGroupName)' and '$($Name)' ..."
@@ -167,6 +179,8 @@ function Test-TargetResource
         [parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [String] $DomainNameFqdn,
+                
+        [String] $LBAddress,
 
         [UInt32] $ListenerPortNumber = 1433,
 
@@ -215,7 +229,16 @@ function Test-TargetResource
             return $false
         }
 
-        $publicIpAddress = ([System.Net.DNS]::GetHostAddresses($DomainNameFqdn)).IPAddressToString
+        if (!$LBAddress) {
+
+            $publicIpAddress = ([System.Net.DNS]::GetHostAddresses($DomainNameFqdn)).IPAddressToString
+
+        } else {
+
+            $publicIpAddress = $LBAddress
+
+        }
+
         Write-Verbose -Message "Checking if IP Address resource for '$($publicIpAddress)' exists ..."
         if (Get-ClusterResource "IP Address $publicIpAddress" -ErrorAction Ignore)
         {
