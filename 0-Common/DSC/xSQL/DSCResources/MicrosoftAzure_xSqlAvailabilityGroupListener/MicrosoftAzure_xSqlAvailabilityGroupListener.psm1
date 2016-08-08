@@ -117,7 +117,7 @@ function Set-TargetResource
                 DnsName = $Name
             }
             Add-ClusterResource -Name $Name -ResourceType "Network Name" -Group $AvailabilityGroupName -ErrorAction SilentlyContinue |
-                Set-ClusterParameter -Multiple $params -ErrorAction Stop
+                Set-ClusterParameter -Multiple $params -ErrorAction Ignore
 
             Write-Verbose -Message "Setting resource dependency between '$($AvailabilityGroupName)' and '$($Name)' ..."
             Get-ClusterResource -Name $AvailabilityGroupName | Set-ClusterResourceDependency "[$Name]" -ErrorAction Stop
@@ -135,7 +135,7 @@ function Set-TargetResource
                 EnableDhcp = 0
                 }
             Add-ClusterResource -Name "IP Address $publicIpAddress" -ResourceType "IP Address" -Group $AvailabilityGroupName -ErrorAction Stop |
-                Set-ClusterParameter -Multiple $params -ErrorAction Stop
+                Set-ClusterParameter -Multiple $params -ErrorAction Ignore
 
             Write-Verbose -Message "Setting resource dependency between '$($Name)' and '$($publicIpAddress)' ..."
             Get-ClusterResource -Name $Name | Set-ClusterResourceDependency "[IP Address $publicIpAddress]" -ErrorAction Stop

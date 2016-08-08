@@ -13,13 +13,8 @@ Configuration DemoSQL
         [String]$DomainNetbiosName  = (Get-NetBIOSName -DomainName $domain),
         [UInt32]$DatabaseEnginePort = 1433,
 		   [Int]$RetryCount         = 20,
-           [Int]$RetryIntervalSec   = 30,
+           [Int]$RetryIntervalSec   = 30
 
-		[string]$LBName        = 'lb123',
-		[string]$LBFQName      = $LBName + '.' + $domain,
-		[string]$LBAddress     = '10.0.8.250',
-		[string]$DNSServerName = 'my4appqaadvm0',
-		[string]$DatabaseNames = 'FabrikamFiber'
     )
 	
     [string]$LBFQName="${LBName}.${$domain}"
@@ -40,6 +35,14 @@ Configuration DemoSQL
 	$SqlAOEndpointName = $ClusterName + '-hadr'
 	$SqlAOAvailGrpName = $ClusterName + '-ag'
 	$SqlAOAvailGrpLstn = $ClusterName + '-ls'
+
+	$LBName        = $SqlAOAvailGrpLstn
+	$LBFQName      = $LBName + '.' + $domain
+	$LBAddress     = '10.0.8.250'
+	$DNSServerName = 'my4appqaadvm0'
+	$DatabaseNames = 'FabrikamFiber'
+
+
 
     [System.Management.Automation.PSCredential]$SQLServiceCreds = New-Object System.Management.Automation.PSCredential ("${DomainNetbiosName}\$SQLServiceAccount", $DomainUserAccount.Password)
 
@@ -267,19 +270,20 @@ Configuration DemoSQL
 		#	DNSServerName = $DNSServerName
 		#}
 
-		#xSqlAvailabilityGroupListener SqlAGListener
-		#{
-		#	Name                       = $SqlAOAvailGrpLstn
-		#	AvailabilityGroupName      = $SqlAOAvailGrpName
-		#	DomainNameFqdn             = $LBFQName
-		#	LBAddress                  = $LBAddress
-		#	ListenerPortNumber         = 1433
-		#	ProbePortNumber            = 59999
-		#	InstanceName               = $env:COMPUTERNAME
-		#	DomainCredential           = $DomainUserAccount
-		#	SqlAdministratorCredential = $DomainUserAccount
-		#	DependsOn                  = @("[xSqlAvailabilityGroup]SqlAG","[xSQLAddListenerIPToDNS]UpdateDNSServer")
-		#}
+#		xSqlAvailabilityGroupListener SqlAGListener
+#		{
+#			Name                       = $SqlAOAvailGrpLstn
+#			AvailabilityGroupName      = $SqlAOAvailGrpName
+#			DomainNameFqdn             = $LBFQName
+#			LBAddress                  = $LBAddress
+#			ListenerPortNumber         = 1433
+#			ProbePortNumber            = 59999
+#			InstanceName               = $env:COMPUTERNAME
+#			DomainCredential           = $DomainUserAccount
+#			SqlAdministratorCredential = $DomainUserAccount
+#			DependsOn                  = "[xSqlAvailabilityGroup]SqlAG"
+##			DependsOn                  = @("[xSqlAvailabilityGroup]SqlAG","[xSQLAddListenerIPToDNS]UpdateDNSServer")
+#		}
 
 		xRemoteFile GetBacpac
 		{  

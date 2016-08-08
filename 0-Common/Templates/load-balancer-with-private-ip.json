@@ -3,96 +3,99 @@
     "contentVersion": "1.0.0.0",
 
     "parameters": {
-        "commonSettings":     { "type": "object", "metadata": { "description": "Common API values"                     } },
-          "loadBalancerName": { "type": "string", "metadata": { "description": "This is the name of the load balancer" } },
-          "privateIPAddress": { "type": "string", "metadata": { "description": "This is the actual private IP Address" } },
-                "portNumber": { "type": "string", "metadata": { "description": "Port number to balance"                } },
-        "virtualNetworkName": { "type": "string", "metadata": { "description": "Name of the Virtual Network."          } },
-                "subnetName": { "type": "string", "metadata": { "description": "Name of the subnet."                   } }
+        "commonSettings":     { "type": "object",                                               "metadata": { "description": "Common API values"                     } },
+          "loadBalancerName": { "type": "string",                                               "metadata": { "description": "This is the name of the load balancer" } },
+          "privateIPAddress": { "type": "string",                                               "metadata": { "description": "This is the actual private IP Address" } },
+                "portNumber": { "type": "string",                                               "metadata": { "description": "Port number to balance"                } },
+               "probeNumber": { "type": "string", "defaultValue": "[parameters('portNumber')]", "metadata": { "description": "Inquiring minds want to know"          } },
+        "virtualNetworkName": { "type": "string",                                               "metadata": { "description": "Name of the Virtual Network."          } },
+                "subnetName": { "type": "string",                                               "metadata": { "description": "Name of the subnet."                   } }
   },
 
-    "variables": {
-        "loadBalancerFrontEndName": "[concat(parameters('loadBalancerName'), '-front')]",
-         "loadBalancerBackEndName": "[concat(parameters('loadBalancerName'),  '-back')]",
-           "loadBalancerProbeName": "[concat(parameters('loadBalancerName'), '-probe')]",
+	"variables": {
+		"loadBalancerFrontEndName": "[concat(parameters('loadBalancerName'), '-front')]",
+		"loadBalancerBackEndName":  "[concat(parameters('loadBalancerName'),  '-back')]",
+		"loadBalancerProbeName":    "[concat(parameters('loadBalancerName'), '-probe')]",
+		"loadBalancerProbeName1":   "[concat( variables('loadBalancerProbeName'), '-', 80                       )]",
+		"loadBalancerProbeName2":   "[concat( variables('loadBalancerProbeName'), '-', parameters('probeNumber'))]",
 
 
-        "lbID": "[resourceId('Microsoft.Network/loadBalancers',          parameters(       'loadBalancerName'))]",
-        "feID": "[concat(variables('lbID'),'/frontendIPConfigurations/', variables('loadBalancerFrontEndName'))]",
-        "beID": "[concat(variables('lbID'),'/backendAddressPools/',      variables( 'loadBalancerBackEndName'))]",
-        "prID1":"[concat(variables('lbID'),'/probes/',            concat(variables(   'loadBalancerProbeName'),80                      ))]",
-        "prID2":"[concat(variables('lbID'),'/probes/',            concat(variables(   'loadBalancerProbeName'),parameters('portNumber')))]"
-    },
-   
-    "resources": [
-        {
-            "name": "[parameters('loadBalancerName')]",
-            "type": "Microsoft.Network/loadBalancers",
-            "location": "[resourceGroup().location]",
-            "apiVersion": "2016-03-30",
+		"lbID": "[resourceId('Microsoft.Network/loadBalancers',          parameters(       'loadBalancerName') )]",
+		"feID": "[concat(variables('lbID'),'/frontendIPConfigurations/', variables('loadBalancerFrontEndName') )]",
+		"beID": "[concat(variables('lbID'),'/backendAddressPools/',      variables( 'loadBalancerBackEndName') )]",
+		"prID1": "[concat(variables('lbID'),'/probes/',                  variables(   'loadBalancerProbeName1'))]",
+		"prID2": "[concat(variables('lbID'),'/probes/',                  variables(   'loadBalancerProbeName2'))]"
+	},
 
-            "properties": {
-                "frontendIPConfigurations": [
-                    {
-                        "properties": {
-                            "subnet": { "id": "[concat(resourceId('Microsoft.Network/virtualNetworks',parameters('virtualNetworkName')),'/subnets/',parameters('subnetName'))]" },
-                            "privateIPAllocationMethod": "Static",
-                            "privateIPAddress": "[parameters('privateIPAddress')]"
-                        },
-                        "name": "[variables('loadBalancerFrontEndName')]",
-                    }
-                ],
+	"resources": [
+		{
+			"name": "[parameters('loadBalancerName')]",
+			"type": "Microsoft.Network/loadBalancers",
+			"location": "[resourceGroup().location]",
+			"apiVersion": "2016-03-30",
 
-                "backendAddressPools": [ { "name": "[variables('loadBalancerBackEndName')]" } ],
+			"properties": {
+				"frontendIPConfigurations": [
+					{
+						"properties": {
+							"subnet": { "id": "[concat(resourceId('Microsoft.Network/virtualNetworks',parameters('virtualNetworkName')),'/subnets/',parameters('subnetName'))]" },
+							"privateIPAllocationMethod": "Static",
+							"privateIPAddress": "[parameters('privateIPAddress')]"
+						},
+						"name": "[variables('loadBalancerFrontEndName')]"
+					}
+				],
 
-                "probes": [
-                    {
-                        "name": "[concat(variables('loadBalancerProbeName'),80)]",
-                        "properties": {
-                            "protocol": "tcp",
-                            "port": 80,
-//                          "requestPath": "myprobeapp1/myprobe1.svc",// the requestPath value is required when protocol=http
-                            "intervalInSeconds": 5,
-                            "numberOfProbes": 2
-                        }
-                    },
-                    {
-                        "name": "[concat(variables('loadBalancerProbeName'),parameters('portNumber'))]",
-                        "properties": {
-                            "protocol": "tcp",
-                            "port": "[parameters('portNumber')]",
-//                          "requestPath": "myprobeapp1/myprobe1.svc",// the requestPath value is required when protocol=http
-                            "intervalInSeconds": 5,
-                            "numberOfProbes": 2
-                        }
-                    }
-                ],
+				"backendAddressPools": [ { "name": "[variables('loadBalancerBackEndName')]" } ],
 
-                "loadBalancingRules": [
-                    {
-                        "name": "[concat(parameters('loadBalancerName'), '-rule-http')]",
-                        "properties": {
-                            "frontendIPConfiguration": { "id": "[variables('feID')]"  },
-                            "backendAddressPool":      { "id": "[variables('beID')]"  },
-                            "probe":                   { "id": "[variables('prID1')]" },
-                            "protocol":                "Tcp",
-                            "frontendPort":            80,
-                            "backendPort":             80
-                        }
-                    },
-                    {
-                        "name": "[concat(parameters('loadBalancerName'),'-rule-',parameters('portNumber'))]",
-                        "properties": {
-                            "frontendIPConfiguration": { "id": "[variables('feID')]"  },
-                            "backendAddressPool":      { "id": "[variables('beID')]"  },
-                            "probe":                   { "id": "[variables('prID2')]" },
-                            "protocol":                "Tcp",
-                            "frontendPort":            "[parameters('portNumber')]",
-                            "backendPort":             "[parameters('portNumber')]"
-                        }
-                    }
-                ]
-            }
-        }
-    ]
+				"probes": [
+					{
+						"name": "[variables('loadBalancerProbeName1')]",
+						"properties": {
+							"protocol": "tcp",
+							"port": 80,
+							//                          "requestPath": "myprobeapp1/myprobe1.svc",// the requestPath value is required when protocol=http
+							"intervalInSeconds": 5,
+							"numberOfProbes": 2
+						}
+					},
+					{
+						"name": "[variables('loadBalancerProbeName2')]",
+						"properties": {
+							"protocol": "tcp",
+							"port": "[parameters('probeNumber')]",
+							"intervalInSeconds": 5,
+							"numberOfProbes": 2
+						}
+					}
+				],
+
+				"loadBalancingRules": [
+					{
+						"name": "[concat(parameters('loadBalancerName'), '-rule-http')]",
+						"properties": {
+							"frontendIPConfiguration": { "id": "[variables('feID')]" },
+							"backendAddressPool": { "id": "[variables('beID')]" },
+							"probe": { "id": "[variables('prID1')]" },
+							"protocol": "Tcp",
+							"frontendPort": 80,
+							"backendPort": 80
+						}
+					},
+					{
+						"name": "[concat(parameters('loadBalancerName'),'-rule-',parameters('portNumber'))]",
+						"properties": {
+							"frontendIPConfiguration": { "id": "[variables('feID')]" },
+							"backendAddressPool": { "id": "[variables('beID')]" },
+							"probe": { "id": "[variables('prID2')]" },
+							"protocol": "Tcp",
+							"frontendPort": "[parameters('portNumber')]",
+							"backendPort": "[parameters('portNumber')]"
+						},
+						"enableFloatingIP": true
+					}
+				]
+			}
+		}
+	]
 }

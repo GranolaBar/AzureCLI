@@ -47,6 +47,7 @@
                       "loadBalancerName": { "value": "[parameters('loadBalancerName')]"                              },
                       "privateIPAddress": { "value": "[parameters('virtualNetworkParameters').sqlprivateIPAddress]"  },
                             "portNumber": { "value": "1433"                                                          },
+                           "probeNumber": { "value": "59999"                                                         },
                     "virtualNetworkName": { "value": "[parameters('virtualNetworkParameters').virtualNetworkName]"   },
                             "subnetName": { "value": "[parameters('virtualNetworkParameters').sqlSubnetName]"        }
                 }
@@ -56,11 +57,35 @@
 
 
         {
-            "name": "[concat(copyIndex(),parameters('vmName'))]",
+            "name": "[concat(0,parameters('vmName'))]",
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-            "copy": { "name": "vmcopy", "count": "[parameters('instanceCount')]" },
+            "dependsOn": [ "[concat('Microsoft.Resources/deployments/', parameters('availabilitySetName')) ]" ],
+
+            "properties": {
+                "mode": "incremental",
+                "templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-known-vmloop-sql-nolb-azuredeploy.json')]" },
+
+                "parameters": {
+                    "commonSettings":         { "value": "[       parameters('commonSettings')]"                              },
+                        "virtualNetworkName": { "value": "[       parameters('virtualNetworkParameters').virtualNetworkName]" },
+                                "subnetName": { "value": "[       parameters('virtualNetworkParameters').sqlSubnetName]"      },
+                       "availabilitySetName": { "value": "[       parameters('availabilitySetName')]"                         },
+                    "diagStorageAccountName": { "value": "[       parameters('diagStorageAccountName')]"                      },
+                                    "vmName": { "value": "[concat(parameters('vmName'),                 0)]"                  },
+                    "diskStorageAccountName": { "value": "[concat(parameters('diskStorageAccountRoot'), 0)]"                  }
+                }
+            }
+        },
+
+
+        {
+            "name": "[concat(add(copyIndex(),1),parameters('vmName'))]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+            "copy": { "name": "vmcopy", "count": "[sub(parameters('instanceCount'),1)]" },
 
             "dependsOn": [
                 "[concat('Microsoft.Resources/deployments/', parameters('availabilitySetName')) ]",
@@ -69,21 +94,23 @@
 
             "properties": {
                 "mode": "incremental",
-                "templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-known-vmloop-lb-sql-azuredeploy.json')]" },
+                "templateLink": { "uri": "[concat(parameters('commonSettings').artifactsLocation,'/vdc-known-vmloop-sql-lb-azuredeploy.json')]" },
 
                 "parameters": {
-                    "commonSettings":         { "value": "[parameters('commonSettings')]"                              },
-                        "virtualNetworkName": { "value": "[parameters('virtualNetworkParameters').virtualNetworkName]" },
-                                "subnetName": { "value": "[parameters('virtualNetworkParameters').sqlSubnetName]"      },
-                       "availabilitySetName": { "value": "[parameters('availabilitySetName')]"                         },
-					      "loadBalancerName": { "value": "[parameters('loadBalancerName')]"                            },
-                    "diagStorageAccountName": { "value": "[parameters('diagStorageAccountName')]"                      },
-                                 "thisIndex": { "value": "[                                             copyIndex() ]" },
-                                    "vmName": { "value": "[concat(parameters('vmName'),                 copyIndex())]" },
-                    "diskStorageAccountName": { "value": "[concat(parameters('diskStorageAccountRoot'), copyIndex())]" }
+                    "commonSettings":         { "value": "[parameters('commonSettings')]"                                     },
+                        "virtualNetworkName": { "value": "[parameters('virtualNetworkParameters').virtualNetworkName]"        },
+                                "subnetName": { "value": "[parameters('virtualNetworkParameters').sqlSubnetName]"             },
+                       "availabilitySetName": { "value": "[parameters('availabilitySetName')]"                                },
+					      "loadBalancerName": { "value": "[parameters('loadBalancerName')]"                                   },
+                    "diagStorageAccountName": { "value": "[parameters('diagStorageAccountName')]"                             },
+                                 "thisIndex": { "value": "[                                             add(1,copyIndex()) ]" },
+                                    "vmName": { "value": "[concat(parameters('vmName'),                 add(1,copyIndex()))]" },
+                    "diskStorageAccountName": { "value": "[concat(parameters('diskStorageAccountRoot'), add(1,copyIndex()))]" }
                 }
             }
         },
+
+
 
 
 		//{
@@ -113,7 +140,7 @@
 			"type": "Microsoft.Resources/deployments",
 			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-			"dependsOn": [ "vmcopy" ],
+			"dependsOn": [ "[concat('Microsoft.Resources/deployments/', concat(0,parameters('vmName')) ) ]" ],
 
 			"properties": {
 				"mode": "incremental",
@@ -135,7 +162,7 @@
 			"type": "Microsoft.Resources/deployments",
 			"apiVersion": "[parameters('commonSettings').resourceApiVersion]",
 
-			"dependsOn": [ "vmcopy" ],
+			"dependsOn": [ "Microsoft.Resources/deployments/SQL-AO-Witness", "vmcopy" ],
 
 			"properties": {
 				"mode": "incremental",

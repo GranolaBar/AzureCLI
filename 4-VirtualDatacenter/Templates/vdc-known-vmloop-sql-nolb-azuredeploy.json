@@ -1,0 +1,81 @@
+﻿{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+
+    "parameters": {
+        "commonSettings":         { "type": "object",    "metadata": { "description": "Common API values"                                 } },
+              "virtualNetworkName": { "type": "string",  "metadata": { "description": "Name of Virtual Network"                           } },
+                      "subnetName": { "type": "string",  "metadata": { "description": "Name of first/only subnet"                         } },
+             "availabilitySetName": { "type": "string"                                                                                      },
+          "diskStorageAccountName": { "type": "string",  "metadata": { "description": "Name of storage account for VHD's"                 } },
+          "diagStorageAccountName": { "type": "string",  "metadata": { "description": "Name of storage account for diagnostics"           } },
+                          "vmName": { "type": "string",  "metadata": { "description": "Name of the virtual machine."                      } }
+    },
+
+    "variables": { "nicName": "[concat(parameters('vmName'), '-nic0')]" },
+    
+    "resources": [
+         
+        {
+            "name": "[parameters('diskStorageAccountName')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+            "properties": {
+                "mode": "incremental",
+                "templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/storage-account.json')]" },
+
+                "parameters": {
+                    "commonSettings":     { "value": "[parameters('commonSettings')]"         },
+                    "storageAccountName": { "value": "[parameters('diskStorageAccountName')]" }
+                }
+            }
+        },
+
+
+        {
+            "name": "[variables('nicName')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+   
+            "properties": {
+                "mode": "incremental",
+                "templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/nic.json')]" },
+
+                "parameters": {
+                    "commonSettings":     { "value": "[parameters('commonSettings')]"     },
+                               "nicName": { "value": "[ variables(           'nicName')]" },
+                    "virtualNetworkName": { "value": "[parameters('virtualNetworkName')]" },
+                            "subnetName": { "value": "[parameters(        'subnetName')]" }
+                }
+            }
+        },
+
+
+
+        {
+            "name": "[parameters('vmName')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "[parameters('commonSettings').resourceApiVersion]",
+
+            "dependsOn": [
+                "[concat('Microsoft.Resources/deployments/', parameters('diskStorageAccountName'))]",
+                "[concat('Microsoft.Resources/deployments/',  variables('nicName'))]"
+            ],
+            
+            "properties": {
+                "mode": "incremental",
+                "templateLink": { "uri": "[concat(parameters('commonSettings').commonLocation,'/sqlvm-via-nic-with-availability-set.json')]" },
+
+                "parameters": {
+                    "commonSettings":         { "value": "[parameters('commonSettings')]"         },
+                                    "vmName": { "value": "[parameters(                'vmName')]" },
+					"diskStorageAccountName": { "value": "[parameters('diskStorageAccountName')]" },
+                    "diagStorageAccountName": { "value": "[parameters('diagStorageAccountName')]" },        
+                                   "nicName": { "value": "[ variables(               'nicName')]" },
+                       "availabilitySetName": { "value": "[parameters(   'availabilitySetName')]" }
+                }
+            }
+        }
+    ]
+}

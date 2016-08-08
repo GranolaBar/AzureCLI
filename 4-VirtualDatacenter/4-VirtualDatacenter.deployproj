@@ -38,12 +38,13 @@
     <None Include="Templates\metadata.json" />
     <None Include="Templates\vdc-adtier-1-azuredeploy.json" />
     <None Include="Templates\vdc-adtier-2-azuredeploy.json" />
+    <None Include="Templates\vdc-known-vmloop-sql-nolb-azuredeploy.json" />
     <None Include="Templates\vdc-shared-azuredeploy-PostSecondDC.json" />
     <None Include="Templates\vdc-shared-azuredeploy-PostFirstDC.json" />
     <None Include="Templates\vdc-sqltier-azuredeploy.json" />
     <None Include="Templates\vdc-dmztier-azuredeploy.json" />
     <None Include="Templates\vdc-known-vmloop-linux-lb-azuredeploy.json" />
-    <None Include="Templates\vdc-known-vmloop-lb-sql-azuredeploy.json" />
+    <None Include="Templates\vdc-known-vmloop-sql-lb-azuredeploy.json" />
     <None Include="Templates\vdc-known-vmloop-lb-azuredeploy.json" />
     <None Include="Templates\vdc-known-azuredeploy.json" />
     <None Include="Templates\vdc-biztier-azuredeploy.json" />
